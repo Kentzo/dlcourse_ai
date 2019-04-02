@@ -66,9 +66,7 @@ def softmax_with_cross_entropy(predictions, target_index):
     if len(predictions.shape) == 1:
       dprediction[target_index] -= 1
     else:
-      dprediction = np.ones_like(probs)
-      dprediction[np.arange(dprediction.shape[0]), target_index] -= 1 / probs[np.arange(dprediction.shape[0]), target_index]
-      dprediction *= probs
+      dprediction[np.arange(dprediction.shape[0]), target_index] -= 1
       dprediction /= dprediction.shape[0]
 
     return loss, dprediction
