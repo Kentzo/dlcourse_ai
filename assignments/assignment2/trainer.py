@@ -15,6 +15,9 @@ class Dataset:
         self.val_X = val_X
         self.val_y = val_y
 
+        for a in (self.train_X, self.train_y, self.val_X, self.val_y):
+            a.flags.writeable = False
+
 
 class Trainer:
     """
@@ -86,7 +89,7 @@ class Trainer:
         loss_history = []
         train_acc_history = []
         val_acc_history = []
-        
+
         for epoch in range(self.num_epochs):
             shuffled_indices = np.arange(num_train)
             np.random.shuffle(shuffled_indices)
@@ -96,11 +99,8 @@ class Trainer:
             batch_losses = []
 
             for batch_indices in batches_indices:
-                # TODO Generate batches based on batch_indices and
-                # use model to generate loss and gradients for all
-                # the params
-
-                raise Exception("Not implemented!")
+                X_batch, y_batch = self.dataset.train_X[batch_indices], self.dataset.train_y[batch_indices]
+                loss = self.model.compute_loss_and_gradients(X_batch, y_batch)
 
                 for param_name, param in self.model.params().items():
                     optimizer = self.optimizers[param_name]
@@ -109,8 +109,7 @@ class Trainer:
                 batch_losses.append(loss)
 
             if np.not_equal(self.learning_rate_decay, 1.0):
-                # TODO: Implement learning rate decay
-                raise Exception("Not implemented!")
+                self.learning_rate *= self.learning_rate_decay
 
             ave_loss = np.mean(batch_losses)
 
@@ -120,8 +119,8 @@ class Trainer:
             val_accuracy = self.compute_accuracy(self.dataset.val_X,
                                                  self.dataset.val_y)
 
-            print("Loss: %f, Train accuracy: %f, val accuracy: %f" %
-                  (batch_losses[-1], train_accuracy, val_accuracy))
+            print("%d: Loss: %f, Train accuracy: %f, val accuracy: %f" %
+                  (epoch, batch_losses[-1], train_accuracy, val_accuracy))
 
             loss_history.append(ave_loss)
             train_acc_history.append(train_accuracy)
