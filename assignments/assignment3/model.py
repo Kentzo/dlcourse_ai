@@ -1,3 +1,5 @@
+from itertools import chain
+
 import numpy as np
 
 from layers import (
@@ -26,8 +28,25 @@ class ConvNet:
         conv1_channels, int - number of filters in the 1st conv layer
         conv2_channels, int - number of filters in the 2nd conv layer
         """
-        # TODO Create necessary layers
-        raise Exception("Not implemented!")
+        self.conv1_layer = (
+            ConvolutionalLayer(input_shape[2], conv1_channels, 3, 0),
+            ReLULayer(),
+            MaxPoolingLayer(4, 1)
+        )
+        self.conv2_layer = (
+            ConvolutionalLayer(conv1_channels, conv2_channels, 3, 0),
+            ReLULayer(),
+            MaxPoolingLayer(4, 1)
+        )
+        final_shape = (
+            input_shape[0] - 3 + 1 - 4 + 1 - 3 + 1 - 4 + 1,
+            input_shape[1] - 3 + 1 - 4 + 1 - 3 + 1 - 4 + 1,
+            conv2_channels
+        )
+        self.output_layer = (
+            Flattener(),
+            FullyConnectedLayer(np.prod(final_shape), n_output_classes)
+        )
 
     def compute_loss_and_gradients(self, X, y):
         """
@@ -38,23 +57,39 @@ class ConvNet:
         X, np array (batch_size, height, width, input_features) - input data
         y, np array of int (batch_size) - classes
         """
-        # Before running forward and backward pass through the model,
-        # clear parameter gradients aggregated from the previous pass
+        for p in self.params().values():
+            p.reset()
 
-        # TODO Compute loss and fill param gradients
-        # Don't worry about implementing L2 regularization, we will not
-        # need it in this assignment
-        raise Exception("Not implemented!")
+        o = self.forward(X)
+        loss, loss_grad = softmax_with_cross_entropy(o, y)
+        self.backward(loss_grad)
+        return loss
 
     def predict(self, X):
-        # You can probably copy the code from previous assignment
-        raise Exception("Not implemented!")
+        return self.forward(X).argmax(axis=1)
 
     def params(self):
-        result = {}
+        conv1_params = self.conv1_layer[0].params()
+        conv2_params = self.conv2_layer[0].params()
+        output_params = self.output_layer[1].params()
 
-        # TODO: Aggregate all the params from all the layers
-        # which have parameters
-        raise Exception("Not implemented!")
+        return {
+            'c1W': conv1_params['W'],
+            'c1B': conv1_params['B'],
+            'c2W': conv2_params['W'],
+            'c2B': conv2_params['B'],
+            'oW': output_params['W'],
+            'oB': output_params['B']
+        }
 
-        return result
+    def forward(self, X):
+        for l in chain(self.conv1_layer, self.conv2_layer, self.output_layer):
+            X = l.forward(X)
+
+        return X
+
+    def backward(self, d_out):
+        for l in chain(reversed(self.output_layer), reversed(self.conv2_layer), reversed(self.conv1_layer)):
+            d_out = l.backward(d_out)
+
+        return d_out
